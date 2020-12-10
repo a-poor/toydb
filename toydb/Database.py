@@ -64,7 +64,7 @@ class Database:
         return json.reads(mdf.read_text())
 
     def _writeMetadata(self):
-        with (self.filename/"metadata.json").open("w") as f:
+        with (self.filename / "metadata.json").open("w") as f:
             json.dump(self.metadata,f)
 
     def _loadStructs(self):

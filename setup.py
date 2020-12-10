@@ -10,7 +10,7 @@ setuptools.setup(
     version="0.0.1",
     author="Austin Poor",
     author_email="austinpoor@gmail.com",
-    description="A small relational database writen in pure python.",
+    description="A small relational database written in pure python.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/a-poor/toydb",
