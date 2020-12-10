@@ -40,4 +40,5 @@ jobs:
         echo "Current directory: $(pwd)"
     - name: Test with pytest
       run: |
+        cd ..
         pytest
