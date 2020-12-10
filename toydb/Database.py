@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from datetime import datetime as dt
 
-from .dtypes import dtypes
+from . import dtypes
 from .RowStruct import RowStruct
 
 from typing import Union, Dict
@@ -59,6 +59,7 @@ class Database:
         }
         self._writeMetadata()
 
+
     def _loadMetadata(self):
         mdf = self.filename / "metadata.json"
         return json.reads(mdf.read_text())
@@ -72,3 +73,8 @@ class Database:
             tn, schema in self.metadata["tables"].items()}
 
     # def _validateData(self,table_name,)
+
+    def query(self,select,from,where=None,order_by=None,limit=None):
+        pass
+
+    def insert(self,)
