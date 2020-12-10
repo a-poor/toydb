@@ -2,8 +2,8 @@
 import struct
 import itertools as it
 
-import .dtypes
-import .exceptions
+from . import dtypes
+from . import exceptions
 
 
 
