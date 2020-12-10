@@ -7,7 +7,7 @@ from . import exceptions
 
 
 
-from typing import Union, List
+from typing import Union, List, Dict, Any
 
 class RowStruct:
     """Wraps the `struct.Struct` class.
@@ -16,17 +16,20 @@ class RowStruct:
     """
 
     @staticmethod
-    def _encode(txt: str) -> bytes:
+    def _encode(txt: Union[str,None]) -> bytes:
+        """Encode `str` as `bytes` and converts
+        `None` to empty `bytes` obj."""
         if txt is None: return b""
         return txt.encode()
 
     @staticmethod
     def _decode(txt: bytes) -> str:
+        """Strips `\x00` characters and decodes."""
         return txt.strip(b'\x00').decode()
 
     @staticmethod
-    def _getDefault(type: Union[str,dtype.dtype]):
-        if isinstance(type,dtypes.dtype):
+    def _getDefault(type: Union[str,dtypes.DType]):
+        if isinstance(type,dtypes.DType):
             type = str(type)
         if any(c in type for c in "ilfd"):
             return 0
@@ -34,9 +37,10 @@ class RowStruct:
             return b""
         if "?" in type: return False
 
-    def __init__(self, types: List[Union[str,dtypes.dtype]], endian=">"):
+    def __init__(self, columns: List[str], types: List[Union[str,dtypes.DType]], endian=">"):
         assert len(types) > 0
         assert endian in "@=<>!"
+        self.columns = columns
         self.types = types
         self.endian = endian
         self.format = self._makeFmt()
@@ -62,8 +66,16 @@ class RowStruct:
         assert len(fmt) > 1
         return fmt
 
-    def pack(self, row: list) -> bytes:
+    def _row_dict2list(self, row: Dict[str,Any]) -> list:
+        assert all(r in self.columns for r in row.keys())
+        res = {c: None for c in self.columns}
+        res.update(row)
+        return list(res.values())
+
+    def pack(self, row: Union[List[Any], Dict[str, Any]]) -> bytes:
         #NOTE: Validate types here
+        if isinstance(row, dict):
+            row = self._row_dict2list(row)
         # Use bool flags to replace NA values
         not_na_flags = [(r is not None) for r in row]
         # Encode the strings, if necessary
@@ -83,12 +95,8 @@ class RowStruct:
         assert len(b) > 0
         assert len(b) % 2 == 0
         flags, row = b[::2], b[1::2]
-        row = (
-            (self._decode(r) if is_s else r)
-            for is_s, r in zip(self._strRows,row)
-        )
-        row = (
-            (r if f else None)
-            for f, r in zip(flags,row)
-        )
+        row = ((self._decode(r) if is_s else r)
+            for is_s, r in zip(self._strRows,row))
+        row = ((r if f else None)
+            for f, r in zip(flags,row))
         return tuple(row)
