@@ -2,5 +2,5 @@
 
 import toydb
 
-def placeholder_test():
+def test_placeholder():
     assert True
