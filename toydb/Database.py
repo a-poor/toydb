@@ -3,7 +3,7 @@
 
 import json
 from pathlib import Path
-import datetime.datetime as dt
+from datetime import datetime as dt
 
 from .dtypes import dtypes
 from .RowStruct import RowStruct
