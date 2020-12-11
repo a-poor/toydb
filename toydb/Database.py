@@ -17,7 +17,7 @@ class Database:
     def _validateDirectory(directory: Union[str,Path]) -> bool:
         """
 
-        :param directory: Location
+        :param directory: Location of the database directory
         :return: Is the directory valid?
         """
         directory = Path(directory)
@@ -25,7 +25,8 @@ class Database:
 
     @classmethod
     def _new(cls, filename: str = "db.tdb"):
-        """
+        """Initialize the filestructure of a new
+        database.
 
         :param filename: filename for new database
         """
@@ -47,9 +48,9 @@ class Database:
 
     @classmethod
     def new(cls, filename: str = "db.tdb"):
-        """Create a new
+        """Create a new database
 
-        :param name: ""
+        :param filename: Path to the new databasae
         :return: New Database instance
         """
         cls._new(filename)
@@ -57,6 +58,9 @@ class Database:
 
     def __init__(self, filename: str = "db.tdb"):
         """Creates an instance of a `toydb.Database`.
+
+        If a database doesn't already exist, it will
+        create a new one by calling ``Database.new()``.
 
         :param filename: Path to the database directory
         """
@@ -73,7 +77,7 @@ class Database:
         return "<toydb.Database>"
 
     def listTables(self) -> List[str]:
-        """Get a list of Database tables.
+        """Get a list of Database table names.
 
         :return: List of DB table names
         """
@@ -92,7 +96,7 @@ class Database:
     def createTable(self, table_name: str, schema: dict):
         """Create a new DB table.
 
-        :param table_name: 
+        :param table_name:
         :param schema:
         """
         table_name = table_name.lower()
@@ -142,8 +146,6 @@ class Database:
             list(d["schema"].values()))
             for tn, d in self.metadata["tables"].items()}
 
-    # def _validateData(self,table_name,)
-
     def printSchema(self, table_name: str):
         """Print a table's schema of column
         names and dtypes.
@@ -183,13 +185,13 @@ class Database:
             f.seek(offset,whence)
             return rstruct.unpack(f.read(struct_size))
 
-    def _iterReadBytes(self, filename: str, n: int) -> Iterable[List]:
+    def _iterReadBytes(self, filename: str, n: int) -> Iterable[bytes]:
         """Generator function for reading a
         binary file `n` bytes at a time.
 
-        :param filename:
-        :param n:
-        :return:
+        :param filename: Filename of binary file
+        :param n: Number of bytes to read at a time
+        :yields: ``n`` bytes from ``filename``
         """
         with open(filename,"rb") as f:
             while True:
@@ -198,9 +200,11 @@ class Database:
                 yield line
 
     def _iterReadAllLines(self, table_name: str) -> Iterable[List]:
-        """
+        """Generator function for iterating over
+        all lines of a database table.
 
-        :param table_name:
+        :param table_name: Name of table in database
+        :yields: Row of data from ``table_name``
         """
         table_name = table_name.lower()
         assert table_name in self.metadata["tables"]
@@ -214,30 +218,33 @@ class Database:
 
     def _readAllLines(self, table_name: str) -> List[List]:
         """
+
+        :param table_name:
+        :return: All of the data in ``table_name``
         """
         return [tuple(row) for row in self._iterReadAllLines(table_name)]
 
-    def query(self, select: List[str], from: str, where = None,
+    def query(self, select: List[str], from_: str, where = None,
         order_by: List[str] = None, limit: int = None):
         """Query a database using SQL(-ish)
         style syntax.
 
-        NOTE: This feature isn't fully functional
+        NOTE: This feature is still in development
 
         :param select: Columns to select
-        :param from: DB table to select from
+        :param from_: DB table to select from
         :param where: Conditionally filter results with a callable function
         :param order_by: Column to sort the results
         :param limit: Limit the number of results
         """
-        FROM = FROM.lower()
-        assert FROM in self.listTables()
+        from_ = from_.lower()
+        assert from_ in self.listTables()
 
     def insert(self, table_name: str, row: Union[Sequence[Any], Dict[str, Any]]):
-        """
+        """Add a new row of data into a table.
 
-        :param table_name:
-        :param row:
+        :param table_name: Table in the database
+        :param row: Row of data to add to table
         """
         table_name = table_name.lower()
         assert table_name in self.metadata["tables"]
@@ -255,17 +262,19 @@ class Database:
         lock.unlink()
 
     def insertMany(self, table_name: str,
-        rows: Sequence[Union[Sequence[Any], Dict[str, Any]]]):
-        """
-        :param table_name:
-        :param rows:
+        rows: Iterable[Union[Sequence[Any], Dict[str, Any]]]):
+        """Insert multiple rows of data into a table.
+
+        :param table_name: Name of table in database
+        :param rows: Iterable of rows to add to table
         """
         for row in rows:
             self.insert(table_name,row)
 
-    def delete(self, table_name: str, WHERE = None):
+    def delete(self, table_name: str, where = None):
         """
+
         :param table_name:
-        :param WHERE:
+        :param where:
         """
         raise NotImplementedError

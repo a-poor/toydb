@@ -2,11 +2,19 @@
 import re
 import json
 
-from typing import Union
+from typing import Union, Any, Optional
 
 class DType:
-    def __init__(self, name: str, value, default=None, has_numeric_value=False):
-        """
+    def __init__(self, name: str, value: str, default: Any = None,
+        has_numeric_value: bool = False):
+        """A datatype for ToyDB.
+
+        :param name: Name of the datatype
+        :param value: Format string corresponding to python's struct
+            `format characters <https://docs.python.org/3/library/struct.html#format-characters>`_.
+        :param default: Default value of the datatype
+        :param has_numeric_value: Is there a number in the ``value``
+            parameter (especially useful with strings).
         """
         self.name = name
         self.value = value
@@ -19,8 +27,17 @@ class DType:
     def __str__(self):
         return str(self.value)
 
-    def __call__(self, n: int=None):
-        """
+    def __call__(self, n: Optional[int] = None) -> str:
+        """Get ``DType``'s format string with optional
+        repeat number prepended.
+
+        :param n: Prefix int prepended to ``self.value``.
+            With strings, it represents the max length of
+            the string. If ``n`` is ``None``, just the
+            value is returned. If ``DType`` already has
+            a number in its ``self.value`` string, ``n``
+            must be set to ``None``.
+        :return: ``struct.Struct`` format string for ``DType``.
         """
         if n is None: n = ""
         else:
@@ -29,8 +46,21 @@ class DType:
             n = str(n)
         return f"{n}{self.value}"
 
-    def subtype(self, n: int):
+    def __getitem__(self, n: int) -> DType:
+        """Another way of calling self.subtype()
+
+        :param n: Prefix int prepended to ``self.value``.
+        :return: Subtype ``DType`` with prepended count.
         """
+        return self.subtype(n)
+
+    def subtype(self, n: int):
+        """Creates a new DType with the same format character,
+        but with a prefix number. Useful when creating
+
+        :param n: Prefix number prepended to ``self.value``.
+            With strings, it represents the max length of
+            the string.
         """
         return self.__class__(
             f"{self.name}[{n}]",
@@ -42,7 +72,8 @@ class JSONEncoder(json.JSONEncoder):
     """Subclass of `json.JSONEncoder` that is able
     to encode `dtype.DType` when calling `json.dump()`.
     """
-    def default(self,obj):
+
+    def default(self, obj: dict):
         if isinstance(obj,DType):
             return obj.value
         else:
@@ -71,22 +102,22 @@ supported_types = [
 ]
 
 def validate(value: Union[int,float,bool,str], dtype: DType) -> bool:
-    """
+    """Checks that ``value``'s type matches ``dtype``.
 
-    :param value:
-    :param dtype:
-    :return:
+    :param value: Value being checked
+    :param dtype: DType to check against
+    :return: Is ``value`` of type ``DType``?
     """
     return isinstance(value,type(dtype.default))
 
 def get_type_from_value(value: Union[int,float,bool,str]) -> DType:
-    """
+    """Guess the ``DType`` matching ``value``.
 
-    :param value:
-    :return:
+    :param value: Value to find matching dtype
+    :return: DType matching ``value``
     """
     if isinstance(value,int):
-        return I32
+        return I64
     if isinstance(value,float):
         return F64
     if isinstance(value,bool):
@@ -95,10 +126,11 @@ def get_type_from_value(value: Union[int,float,bool,str]) -> DType:
         return STRING
 
 def get_type_from_string(fmt_str: str) -> DType:
-    """
+    """Get dtype from ``struct`` format string.
 
-    :param fmt_str:
-    :return:
+    :param fmt_str: format character with possible
+        preceding count.
+    :return: Matching dtype for format string
     """
     assert isinstance(fmt_str, str)
     just_char = re.sub(r"[^a-z]", "", fmt_str)
@@ -119,4 +151,4 @@ def get_type_from_string(fmt_str: str) -> DType:
         if non_char is None:
             return STRING
         else:
-            return STRING.subtype(non_char)
+            return STRING[non_char]
