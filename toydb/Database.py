@@ -4,25 +4,32 @@
 import json
 from pathlib import Path
 from datetime import datetime as dt
-import hashlib
 
+from . import util
 from . import dtypes
 from .RowStruct import RowStruct
 
-from typing import Union, Dict, Any, Sequence, List
+from typing import Union, Dict, Any, Sequence, List, Callable, Iterable
 
 
 class Database:
-    """
-    """
+    @staticmethod
+    def _validateDirectory(directory: Union[str,Path]) -> bool:
+        """
 
-    # @staticmethod
-    # def _validateDirectory(directory: Union[str,Path]):
-    #     directory = Path(directory)
+        :param directory: Location
+        :return: Is the directory valid?
+        """
+        directory = Path(directory)
+        return True
 
     @classmethod
-    def new(cls, name: str = "db.tdb"):
-        filename = Path(name)
+    def _new(cls, filename: str = "db.tdb"):
+        """
+
+        :param filename: filename for new database
+        """
+        filename = Path(filename)
         assert not filename.exists(), "`filename` already exists"
         # Make the database directory
         filename.mkdir()
@@ -33,31 +40,65 @@ class Database:
         metafile.touch()
         metafile.write_text(
             json.dumps({
-                "db-name": name,
+                "db-name": filename,
                 "tables": {},
                 "created": dt.now().strftime("%Y-%m-%d %H:%M:%S")
         }))
+
+    @classmethod
+    def new(cls, filename: str = "db.tdb"):
+        """Create a new
+
+        :param name: ""
+        :return: New Database instance
+        """
+        cls._new(filename)
         return cls(filename)
 
     def __init__(self, filename: str = "db.tdb"):
+        """Creates an instance of a `toydb.Database`.
+
+        :param filename: Path to the database directory
+        """
         self.filename = Path(filename)
+        if self.filename.exists():
+            self._validateDirectory(self.filename)
+        else:
+            self._new(filename)
         self.metadata = self._loadMetadata()
         self.name = self.metadata.get("name")
         self._structs = self._loadStructs()
 
-    def listTables(self):
+    def __str__(self):
+        return "<toydb.Database>"
+
+    def listTables(self) -> List[str]:
+        """Get a list of Database tables.
+
+        :return: List of DB table names
+        """
         return list(self.metadata["tables"].keys())
 
-    def getTableSchema(self, table_name: str):
+    def getTableSchema(self, table_name: str) -> Dict[str,dtypes.DType]:
+        """Get the schema for table `table_name`.
+
+        :param table_name: Name of existing table in DB
+        :return: `dict` mapping from `str` column name to `dtype.DType`
+        """
         table_name = table_name.lower()
         assert table_name in self.listTables()
         return self.metadata["tables"][table_name]["schema"]
 
     def createTable(self, table_name: str, schema: dict):
+        """Create a new DB table.
+
+        :param table_name: 
+        :param schema:
+        """
         table_name = table_name.lower()
         assert " " not in table_name
         assert table_name not in self.listTables()
-        filename = self.filename / "tables" / self._md5(table_name)
+        filename = self.filename / "tables" / util.md5(table_name)
         filename.touch()
         self.metadata["tables"][table_name] = {
             "schema": schema,
@@ -67,10 +108,11 @@ class Database:
         self._writeMetadata()
         self._structs = self._loadStructs()
 
-    def _md5(self, text: str) -> str:
-        return hashlib.md5(text.encode()).hexdigest()
-
     def _loadMetadata(self) -> dict:
+        """Read metadata from file.
+
+        :return: Database metadata `dict`
+        """
         mdf = self.filename / "metadata.json"
         assert mdf.exists(), "Metadata file doesn't exist"
         # Read the raw JSON file
@@ -82,11 +124,19 @@ class Database:
         return md
 
     def _writeMetadata(self):
+        """Save the current state of the metadata
+        to the metadata json file in the datebase
+        directory.
+        """
         # Write out metadata using custom JSONEncoder
         with (self.filename / "metadata.json").open("w") as f:
             json.dump(self.metadata,f,cls=dtypes.JSONEncoder)
 
     def _loadStructs(self) -> Dict[str,dtypes.DType]:
+        """Load structs from the metadata file.
+
+        :return: Mapping from tables to `RowStruct`
+        """
         return {tn: RowStruct(
             list(d["schema"].keys()),
             list(d["schema"].values()))
@@ -95,6 +145,11 @@ class Database:
     # def _validateData(self,table_name,)
 
     def printSchema(self, table_name: str):
+        """Print a table's schema of column
+        names and dtypes.
+
+        :param table_name: Existing table in the database.
+        """
         table_name = table_name.lower()
         table = self.metadata["tables"].get(table_name)
         assert table is not None, f"Table \"{table_name}\" doesn't exist."
@@ -108,22 +163,45 @@ class Database:
             print(f" ... {col:{max_col_len}s} :: {dtype.name}")
         print("","="*int(len(col_header)*1.5))
 
-    def _readLine(self, table_name: str, line: int) -> List[List]:
+    def _readLine(self, table_name: str, line_number: int = 0) -> List[Any]:
+        """Seek then read a single row
+        from a table in the database.
+
+        :param table_name: Table to search
+        :param line_number: Line number of row to read
+        :return: Row from table as list
+        """
         table_name = table_name.lower()
         assert table_name in self.metadata["tables"]
         tablefile = Path(self.metadata["tables"][table_name]["filename"])
         rstruct = self._structs.get(table_name)
+        struct_size = rstruct.row_struct.size
+        offset = struct_size * line_number
+        if offset < 0:
+            whence = 2
         with tablefile.open("rb") as f:
-            f.write(data)
+            f.seek(offset,whence)
+            return rstruct.unpack(f.read(struct_size))
 
-    def _iterReadBytes(self, filename: str, n: int):
+    def _iterReadBytes(self, filename: str, n: int) -> Iterable[List]:
+        """Generator function for reading a
+        binary file `n` bytes at a time.
+
+        :param filename:
+        :param n:
+        :return:
+        """
         with open(filename,"rb") as f:
             while True:
                 line = f.read(n)
                 if not line: break
                 yield line
 
-    def _iterReadAllLines(self, table_name: str):
+    def _iterReadAllLines(self, table_name: str) -> Iterable[List]:
+        """
+
+        :param table_name:
+        """
         table_name = table_name.lower()
         assert table_name in self.metadata["tables"]
         tablefile = Path(self.metadata["tables"][table_name]["filename"])
@@ -135,14 +213,32 @@ class Database:
             yield rstruct.unpack(row)
 
     def _readAllLines(self, table_name: str) -> List[List]:
+        """
+        """
         return [tuple(row) for row in self._iterReadAllLines(table_name)]
 
-    def query(self, SELECT: List[str], FROM: str, WHERE = None,
-            ORDER_BY: List[str] = None, LIMIT: int = None):
+    def query(self, select: List[str], from: str, where = None,
+        order_by: List[str] = None, limit: int = None):
+        """Query a database using SQL(-ish)
+        style syntax.
+
+        NOTE: This feature isn't fully functional
+
+        :param select: Columns to select
+        :param from: DB table to select from
+        :param where: Conditionally filter results with a callable function
+        :param order_by: Column to sort the results
+        :param limit: Limit the number of results
+        """
         FROM = FROM.lower()
         assert FROM in self.listTables()
 
     def insert(self, table_name: str, row: Union[Sequence[Any], Dict[str, Any]]):
+        """
+
+        :param table_name:
+        :param row:
+        """
         table_name = table_name.lower()
         assert table_name in self.metadata["tables"]
         tablefile = Path(self.metadata["tables"][table_name]["filename"])
@@ -159,9 +255,17 @@ class Database:
         lock.unlink()
 
     def insertMany(self, table_name: str,
-            rows: Sequence[Union[Sequence[Any], Dict[str, Any]]]):
+        rows: Sequence[Union[Sequence[Any], Dict[str, Any]]]):
+        """
+        :param table_name:
+        :param rows:
+        """
         for row in rows:
             self.insert(table_name,row)
 
-    def delete(self, table_name: str, where = None):
+    def delete(self, table_name: str, WHERE = None):
+        """
+        :param table_name:
+        :param WHERE:
+        """
         raise NotImplementedError

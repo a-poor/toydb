@@ -5,9 +5,9 @@ import json
 from typing import Union
 
 class DType:
-    value = None
-
     def __init__(self, name: str, value, default=None, has_numeric_value=False):
+        """
+        """
         self.name = name
         self.value = value
         self.default = None
@@ -20,6 +20,8 @@ class DType:
         return str(self.value)
 
     def __call__(self, n: int=None):
+        """
+        """
         if n is None: n = ""
         else:
             assert n > 0
@@ -28,6 +30,8 @@ class DType:
         return f"{n}{self.value}"
 
     def subtype(self, n: int):
+        """
+        """
         return self.__class__(
             f"{self.name}[{n}]",
             f"{n}{self.value}",
@@ -35,6 +39,9 @@ class DType:
             True)
 
 class JSONEncoder(json.JSONEncoder):
+    """Subclass of `json.JSONEncoder` that is able
+    to encode `dtype.DType` when calling `json.dump()`.
+    """
     def default(self,obj):
         if isinstance(obj,DType):
             return obj.value
@@ -64,9 +71,20 @@ supported_types = [
 ]
 
 def validate(value: Union[int,float,bool,str], dtype: DType) -> bool:
+    """
+
+    :param value:
+    :param dtype:
+    :return:
+    """
     return isinstance(value,type(dtype.default))
 
 def get_type_from_value(value: Union[int,float,bool,str]) -> DType:
+    """
+
+    :param value:
+    :return:
+    """
     if isinstance(value,int):
         return I32
     if isinstance(value,float):
@@ -77,6 +95,11 @@ def get_type_from_value(value: Union[int,float,bool,str]) -> DType:
         return STRING
 
 def get_type_from_string(fmt_str: str) -> DType:
+    """
+
+    :param fmt_str:
+    :return:
+    """
     assert isinstance(fmt_str, str)
     just_char = re.sub(r"[^a-z]", "", fmt_str)
     assert len(just_char) == 1
