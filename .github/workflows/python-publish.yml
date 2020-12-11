@@ -7,8 +7,10 @@ on:
   release:
     types: [created]
   push:
-    tags: 
-      - '*'
+    tags:
+      - v*.*.*
+    branches: 
+      - main
 jobs:
   deploy:
 
