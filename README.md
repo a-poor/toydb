@@ -6,13 +6,14 @@ _created by Austin Poor_
 [![](https://github.com/a-poor/toydb/workflows/Python%20package/badge.svg)](https://github.com/a-poor/toydb/actions)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/toydb)](https://pypi.org/project/toydb)
 [![GitHub](https://img.shields.io/github/license/a-poor/toydb)](https://github.com/a-poor/toydb/blob/main/LICENSE)
+[![Documentation Status](https://readthedocs.org/projects/toydb/badge/?version=latest)](https://toydb.readthedocs.io/en/latest/?badge=latest)
 
 
 A small, toy database written in pure python.
 
 * [GitHub](https://github.com/a-poor/toydb)
 * [PyPi Package](https://pypi.org/project/toydb)
-* [Read the Docs](#)
+* [Read the Docs](https://toydb.readthedocs.io/)
 
 ## About
 

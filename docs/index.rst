@@ -10,6 +10,8 @@ Welcome to ToyDB's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   toydb
+
 
 
 Indices and tables
