@@ -46,7 +46,7 @@ class DType:
             n = str(n)
         return f"{n}{self.value}"
 
-    def __getitem__(self, n: int) -> DType:
+    def __getitem__(self, n: int) -> "DType":
         """Another way of calling self.subtype()
 
         :param n: Prefix int prepended to ``self.value``.
