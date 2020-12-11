@@ -74,6 +74,9 @@ class JSONEncoder(json.JSONEncoder):
     """
 
     def default(self, obj: dict):
+        """Handles decoding string data types as
+        ``DType`` objects.
+        """
         if isinstance(obj,DType):
             return obj.value
         else:
