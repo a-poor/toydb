@@ -14,23 +14,25 @@ from typing import Union, Dict, Any, Sequence, List, Callable, Iterable
 
 class Database:
     @staticmethod
-    def _validateDirectory(directory: Union[str,Path]) -> bool:
-        """
+    def _validateDirectory(db_path: Union[str,Path]):
+        """Check that the directory is valid.
 
         :param directory: Location of the database directory
-        :return: Is the directory valid?
+        :raises AssertionError: If the directory isn't valid
         """
-        directory = Path(directory)
-        return True
+        db_path = Path(db_path)
+        md_file = db_path / "metadata.json"
+        assert md_file.exists()
+        assert bool(json.loads(md_file.read_text()))
 
     @classmethod
-    def _new(cls, filename: str = "db.tdb"):
+    def _new(cls, name: str = "db.tdb", path: str = "."):
         """Initialize the filestructure of a new
         database.
 
         :param filename: filename for new database
         """
-        filename = Path(filename)
+        filename = Path(path) / name
         assert not filename.exists(), "`filename` already exists"
         # Make the database directory
         filename.mkdir()
@@ -41,22 +43,22 @@ class Database:
         metafile.touch()
         metafile.write_text(
             json.dumps({
-                "db-name": filename,
+                "db-name": name,
                 "tables": {},
                 "created": dt.now().strftime("%Y-%m-%d %H:%M:%S")
         }))
 
     @classmethod
-    def new(cls, filename: str = "db.tdb"):
-        """Create a new database
+    def new(cls, name: str = "db.tdb", path: str = "."):
+        """Create a new database.
 
         :param filename: Path to the new databasae
         :return: New Database instance
         """
-        cls._new(filename)
-        return cls(filename)
+        cls._new(name,path)
+        return cls(name,path)
 
-    def __init__(self, filename: str = "db.tdb"):
+    def __init__(self, name: str = "db.tdb", path: str = "."):
         """Creates an instance of a `toydb.Database`.
 
         If a database doesn't already exist, it will
@@ -64,7 +66,7 @@ class Database:
 
         :param filename: Path to the database directory
         """
-        self.filename = Path(filename)
+        self.filename = Path(path) / name
         if self.filename.exists():
             self._validateDirectory(self.filename)
         else:
@@ -223,16 +225,17 @@ class Database:
         for row in self._iterReadAllLines(table_name):
             yield dict(zip(cols,row))
 
-    def _readAllLines(self, table_name: str) -> List[List]:
-        """
+    def _readAllLines(self, table_name: str) -> List[tuple]:
+        """Read all lines in a database and return
+        it as a list of tupples.
 
-        :param table_name:
+        :param table_name: Table in the database
         :return: All of the data in ``table_name``
         """
         return [tuple(row) for row in self._iterReadAllLines(table_name)]
 
     def query(self, select: List[Union[str,Dict[str,Callable]]], from_: str, where = None,
-        limit: int = None):
+        order_by: List[str] = None, limit: int = None):
         """Query a database using SQL(-ish)
         style syntax.
 
@@ -248,8 +251,6 @@ class Database:
         itr = self._iterReadAllDict(table_name)
         if limit is not None and limit > 0:
             itr = util.iter_limit(itr,limit)
-
-        # NOTE: figure out order_by (ascending and descending)
 
         # Create SELECT getters
         iden = lambda val: val
@@ -270,8 +271,6 @@ class Database:
         if limit is not None and limit > 0:
             return list(util.iter_limit(result,limit))
         return list(result)
-
-
 
     def insert(self, table_name: str, row: Union[Sequence[Any], Dict[str, Any]]):
         """Add a new row of data into a table.
@@ -299,10 +298,11 @@ class Database:
             self.insert(table_name,row)
 
     def _createTempTable(self, table_name: str) -> Path:
-        """
+        """Create a temporary table version of
+        a database table.
 
-        :param table_name:
-        :return:
+        :param table_name: Table in the database
+        :return: Path to the new table
         """
         assert table_name in self.metadata["tables"]
         tbl_path = Path(self.metadata["tables"][table_name]["filename"])
@@ -310,11 +310,19 @@ class Database:
         tmp_table.touch()
         return tmp_table
 
-    def delete(self, table_name: str, where: Callable[[dict],bool] = None):
-        """
+    def delete(self, table_name: str, where: Callable[[dict],bool]):
+        """Delete rows from a table in the
+        database where callable ``where``
+        evaluates to true.
 
-        :param table_name:
-        :param where:
+        Similar to the SQL ``DELETE FROM`` command.
+
+        :param table_name: Table in the database
+        :param where: Callable that gets a row from the
+            table as an argument (as a dict, mapping
+            from column name to value) and should return
+            ``True`` if that row should be deleted and
+            ``False`` otherwise.
         """
         assert table_name in self.metadata["tables"]
         tbl_path = Path(self.metadata["tables"][table_name]["filename"])
@@ -327,7 +335,7 @@ class Database:
         tmp_path.rename(tbl_path)
 
     def dropTable(self, table_name: str):
-        """
+        """Delete a table from the database.
 
         :param table_name: Table in database
         """
