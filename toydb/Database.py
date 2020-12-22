@@ -93,20 +93,22 @@ class Database:
         assert table_name in self.listTables()
         return self.metadata["tables"][table_name]["schema"]
 
-    def createTable(self, table_name: str, schema: dict):
+    def createTable(self, table_name: str, schema: dict, if_not_exists = False):
         """Create a new DB table.
 
         :param table_name:
         :param schema:
+        :param if_not_exists:
         """
         table_name = table_name.lower()
         assert " " not in table_name
-        assert table_name not in self.listTables()
+        if if_not_exists and table_name in self.listTables():
+            return
         filename = self.filename / "tables" / util.md5(table_name)
         filename.touch()
         self.metadata["tables"][table_name] = {
             "schema": schema,
-            "indexes": [],
+            "indexes": [], # NOTE: Indexes not implemented
             "filename": str(filename)
         }
         self._writeMetadata()
@@ -216,6 +218,11 @@ class Database:
         for row in self._iterReadBytes(tablefile,row_size):
             yield rstruct.unpack(row)
 
+    def _iterReadAllDict(self, table_name: str):
+        cols = list(self.metadata["tables"][table_name]["schema"].keys())
+        for row in self._iterReadAllLines(table_name):
+            yield dict(zip(cols,row))
+
     def _readAllLines(self, table_name: str) -> List[List]:
         """
 
@@ -224,8 +231,8 @@ class Database:
         """
         return [tuple(row) for row in self._iterReadAllLines(table_name)]
 
-    def query(self, select: List[str], from_: str, where = None,
-        order_by: List[str] = None, limit: int = None):
+    def query(self, select: List[Union[str,Dict[str,Callable]]], from_: str, where = None,
+        limit: int = None):
         """Query a database using SQL(-ish)
         style syntax.
 
@@ -234,11 +241,37 @@ class Database:
         :param select: Columns to select
         :param from_: DB table to select from
         :param where: Conditionally filter results with a callable function
-        :param order_by: Column to sort the results
         :param limit: Limit the number of results
         """
-        from_ = from_.lower()
-        assert from_ in self.listTables()
+        table_name = from_.lower()
+        assert table_name in self.listTables()
+        itr = self._iterReadAllDict(table_name)
+        if limit is not None and limit > 0:
+            itr = util.iter_limit(itr,limit)
+
+        # NOTE: figure out order_by (ascending and descending)
+
+        # Create SELECT getters
+        iden = lambda val: val
+        if isinstance(select,str):
+            select = {select:iden}
+        if isinstance(select,(list,tuple)):
+            select = {k: iden for k in select}
+        select = {k.lower():v for k, v in select.items()}
+
+        # SELECT and WHERE iterator
+        result = (
+            tuple(get(row[col]) for col, get in select.items())
+            for row in itr
+            if where is None or where(row)
+        )
+
+        # Limit the result
+        if limit is not None and limit > 0:
+            return list(util.iter_limit(result,limit))
+        return list(result)
+
+
 
     def insert(self, table_name: str, row: Union[Sequence[Any], Dict[str, Any]]):
         """Add a new row of data into a table.
@@ -251,15 +284,9 @@ class Database:
         tablefile = Path(self.metadata["tables"][table_name]["filename"])
         rstruct = self._structs.get(table_name)
         data = rstruct.pack(row)
-        # Simple lock placeholder
-        lock = Path(str(tablefile) + ".lock")
-        while lock.exists(): pass
-        lock.touch()
         # Append the data
         with tablefile.open("ab") as f:
             f.write(data)
-        # Release the lock
-        lock.unlink()
 
     def insertMany(self, table_name: str,
         rows: Iterable[Union[Sequence[Any], Dict[str, Any]]]):
@@ -271,10 +298,41 @@ class Database:
         for row in rows:
             self.insert(table_name,row)
 
-    def delete(self, table_name: str, where = None):
+    def _createTempTable(self, table_name: str) -> Path:
+        """
+
+        :param table_name:
+        :return:
+        """
+        assert table_name in self.metadata["tables"]
+        tbl_path = Path(self.metadata["tables"][table_name]["filename"])
+        tmp_table = tbl_path.with_suffix(".tmp")
+        tmp_table.touch()
+        return tmp_table
+
+    def delete(self, table_name: str, where: Callable[[dict],bool] = None):
         """
 
         :param table_name:
         :param where:
         """
-        raise NotImplementedError
+        assert table_name in self.metadata["tables"]
+        tbl_path = Path(self.metadata["tables"][table_name]["filename"])
+        tmp_path = self._createTempTable(table_name)
+        rstruct = self._structs.get(table_name)
+        for row in self._iterReadAllDict(table_name):
+            if not where(row):
+                self.insert(table_name,row)
+        # "commit" the change
+        tmp_path.rename(tbl_path)
+
+    def dropTable(self, table_name: str):
+        """
+
+        :param table_name: Table in database
+        """
+        assert table_name in self.metadata["tables"]
+        table = Path(self.metadata["tables"][table_name]["filename"])
+        table.unlink()
+        del self.metadata["tables"][table_name]
+        self._writeMetadata()
