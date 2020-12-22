@@ -95,12 +95,17 @@ class Database:
         assert table_name in self.listTables()
         return self.metadata["tables"][table_name]["schema"]
 
-    def createTable(self, table_name: str, schema: dict, if_not_exists = False):
+    def createTable(self, table_name: str, schema: Dict[str,dtypes.DType],
+        if_not_exists: bool = False):
         """Create a new DB table.
 
-        :param table_name:
-        :param schema:
-        :param if_not_exists:
+        :param table_name: Name of new table
+        :param schema: A dictionary mapping from column
+            names to their datatypes. Note: Text datatypes
+            need their max lengths specified.
+        :param if_not_exists: If ``True`` and the table
+            already exists, it won't be overwritten,
+            otherwise it will.
         """
         table_name = table_name.lower()
         assert " " not in table_name
@@ -232,14 +237,12 @@ class Database:
         :param table_name: Table in the database
         :return: All of the data in ``table_name``
         """
-        return [tuple(row) for row in self._iterReadAllLines(table_name)]
+        return [tuple(row) for row
+            in self._iterReadAllLines(table_name)]
 
     def query(self, select: List[Union[str,Dict[str,Callable]]], from_: str, where = None,
-        order_by: List[str] = None, limit: int = None):
-        """Query a database using SQL(-ish)
-        style syntax.
-
-        NOTE: This feature is still in development
+        limit: int = None):
+        """Query a database using SQL(-ish) syntax.
 
         :param select: Columns to select
         :param from_: DB table to select from
@@ -251,7 +254,6 @@ class Database:
         itr = self._iterReadAllDict(table_name)
         if limit is not None and limit > 0:
             itr = util.iter_limit(itr,limit)
-
         # Create SELECT getters
         iden = lambda val: val
         if isinstance(select,str):
@@ -259,14 +261,10 @@ class Database:
         if isinstance(select,(list,tuple)):
             select = {k: iden for k in select}
         select = {k.lower():v for k, v in select.items()}
-
         # SELECT and WHERE iterator
         result = (
             tuple(get(row[col]) for col, get in select.items())
-            for row in itr
-            if where is None or where(row)
-        )
-
+            for row in itr if where is None or where(row))
         # Limit the result
         if limit is not None and limit > 0:
             return list(util.iter_limit(result,limit))

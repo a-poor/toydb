@@ -21,6 +21,7 @@ def iter_limit(itr: Iterable, limit: int) -> Generator:
     :param itr: Iterable to limit
     :param limit: Max number of values to yield
         from ``itr``. Must be a positive integer.
+    :yields: Up to ``limit`` values from ``itr``.
     """
     for i, v in zip(it.count(),itr):
         if i >= limit: break
