@@ -60,7 +60,7 @@ Status
 * Add indexes and keys
 * Implement ``ORDER BY``
 
-There currently isn't any functionality for ``JOIN``s or ``GROUP BY``s.
+There currently isn't any functionality for ``JOIN`` s or ``GROUP BY`` s.
 
 Feedback
 ----------
