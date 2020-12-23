@@ -36,11 +36,10 @@ $ pip install toydb
 
 __NOTE: Still in development.__
 
-- [x] Write the framework
-- [x] Layout the DB directory structure and file format
-- [ ] Write a SQL parser
-- [ ] Write a query function
-- [ ] Table Join functionality
+* Add indexes and keys
+* Implement ``ORDER BY``
+
+There currently isn't any functionality for ``JOIN``s or ``GROUP BY``s.
 
 ## Feedback
 

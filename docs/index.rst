@@ -39,7 +39,7 @@ A small, toy database written in pure python.
 * PyPi Package: https://pypi.org/project/toydb
 * Read the Docs: https://toydb.readthedocs.io
 
-I started writing ``ToyDB`` as a _toy_ project, in order to get a better sense of how RDBMSs work.
+I started writing ``ToyDB`` as a *toy* project, in order to get a better sense of how RDBMSs work.
 
 My goal isn't to write a high-performance database or a fully ANSI compliant RDBMS, it's to continue to get a better understanding of the inner workings of a database.
 
