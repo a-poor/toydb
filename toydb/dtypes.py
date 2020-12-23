@@ -54,6 +54,23 @@ class DType:
         """
         return self.subtype(n)
 
+    def getLength(self):
+        n = "".join(c for c in self.value if c.isdigit())
+        if len(n) == 0: return None
+        return int(n)
+
+    def validate(self, val) -> bool:
+        """Validates the input's type.
+
+        :param val: Value being
+        :returns: Is ``val`` a valid instance of this dtype?
+        """
+        if not isinstance(val,type(self.default)):
+            return False
+        if isinstance(val,str) and len(str) > self.getLength():
+            return False
+        return True
+
     def subtype(self, n: int):
         """Creates a new DType with the same format character,
         but with a prefix number. Useful when creating

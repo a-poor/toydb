@@ -94,9 +94,7 @@ class RowStruct:
         """
         valid_chars = "xc?hilqfds" + "0123456789"
         fmt = self.endian
-        fmt += "".join(
-            f"?{t}" for t in self.types
-        )
+        fmt += "".join(f"?{t}" for t in self.types)
         for c in fmt[1:]:
             if c not in valid_chars:
                 raise exceptions.SchemaError(f"Fmt character '{c}' invalid.")
@@ -140,9 +138,10 @@ class RowStruct:
         :param row: Row of data to be written to table.
         :return: Byte string encoding of ``row``.
         """
-        #NOTE: Validate types here
         if isinstance(row, dict):
             row = self._row_dict2list(row)
+        # Validate the input row
+        self._validateTypes(row)
         # Use bool flags to replace NA values
         not_na_flags = [(r is not None) for r in row]
         # Encode the strings, if necessary
@@ -156,6 +155,20 @@ class RowStruct:
             zip(not_na_flags,row,self._defaults)
         ])
         return self.row_struct.pack(*row)
+
+    def _validateTypes(self, row: list):
+        """Confirms the types in ``row`` before
+        adding them to a table.
+
+        :param row: A list of values to be added to
+            a table in the database.
+        :raises exceptions.SchemaError: If a value in row
+            doesn't match the propper dtype.
+        """
+        for v, t in zip(row,self.types):
+            if not t.validate(v):
+                raise exceptions.SchemaError(
+                    f'Row value {v} is not of type "{t}".')
 
     def unpack(self, data: bytes) -> List[Any]:
         """Decodes a byte encoding of a row of data
