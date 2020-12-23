@@ -24,7 +24,7 @@ setuptools.setup(
 
         "Topic :: Database",
         "Programming Language :: SQL",
-        "Development Status :: 1 - Planning",
+        "Development Status :: 3 - Alpha",
     ],
     python_requires='>=3.6',
 )
