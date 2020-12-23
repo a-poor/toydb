@@ -70,13 +70,21 @@ class Database:
         if self.filename.exists():
             self._validateDirectory(self.filename)
         else:
-            self._new(filename)
+            self._new(name,path)
         self.metadata = self._loadMetadata()
-        self.name = self.metadata.get("name")
+        self.name = self.metadata.get("db-name")
         self._structs = self._loadStructs()
 
     def __str__(self):
-        return "<toydb.Database>"
+        return f"<toydb.Database {self.name}>"
+
+    def __repr__(self):
+        return str(self)
+
+    def remove(self):
+        """Deletes a database folder and
+        all subdirectories."""
+        shutil.rmtree(self.filename)
 
     def listTables(self) -> List[str]:
         """Get a list of Database table names.
@@ -94,6 +102,13 @@ class Database:
         table_name = table_name.lower()
         assert table_name in self.listTables()
         return self.metadata["tables"][table_name]["schema"]
+
+    def getTableColumns(self, table_name: str) -> List[str]:
+        """Get a list of column names in a table.
+
+        :param table_name: Name of existing table in DB
+        """
+        return list(self.getTableSchema(table_name))
 
     def createTable(self, table_name: str, schema: Dict[str,dtypes.DType],
         if_not_exists: bool = False):
@@ -143,7 +158,8 @@ class Database:
         """
         # Write out metadata using custom JSONEncoder
         with (self.filename / "metadata.json").open("w") as f:
-            json.dump(self.metadata,f,cls=dtypes.JSONEncoder)
+            json.dump(self.metadata,f,
+                indent=2,cls=dtypes.JSONEncoder)
 
     def _loadStructs(self) -> Dict[str,dtypes.DType]:
         """Load structs from the metadata file.
@@ -240,7 +256,7 @@ class Database:
         return [tuple(row) for row
             in self._iterReadAllLines(table_name)]
 
-    def query(self, select: List[Union[str,Dict[str,Callable]]], from_: str, where = None,
+    def query(self, from_: str, select: List[Union[str,Dict[str,Callable]]] = "*", where = None,
         limit: int = None):
         """Query a database using SQL(-ish) syntax.
 
@@ -251,6 +267,8 @@ class Database:
         """
         table_name = from_.lower()
         assert table_name in self.listTables()
+        if select == "*":
+            select = self.getTableColumns(table_name)
         itr = self._iterReadAllDict(table_name)
         if limit is not None and limit > 0:
             itr = util.iter_limit(itr,limit)

@@ -18,7 +18,7 @@ class DType:
         """
         self.name = name
         self.value = value
-        self.default = None
+        self.default = default
         self.has_numeric_value = has_numeric_value
 
     def __repr__(self):
@@ -65,10 +65,12 @@ class DType:
         :param val: Value being
         :returns: Is ``val`` a valid instance of this dtype?
         """
+        if val is None: return True
         if not isinstance(val,type(self.default)):
             return False
-        if isinstance(val,str) and len(str) > self.getLength():
-            return False
+        if isinstance(val,str):
+            if len(val) > self.getLength():
+                return False
         return True
 
     def subtype(self, n: int):
@@ -153,8 +155,8 @@ def get_type_from_string(fmt_str: str) -> DType:
     :return: Matching dtype for format string
     """
     assert isinstance(fmt_str, str)
-    just_char = re.sub(r"[^a-z]", "", fmt_str)
-    assert len(just_char) == 1
+    just_char = re.sub(f"[^{valid_chars}]", "", fmt_str)
+    assert len(just_char) == 1, f"just_char for '{fmt_str}' is '{just_char}'"
     if len(just_char) == len(fmt_str):
         non_char = None
     else:

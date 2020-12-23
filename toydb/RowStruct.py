@@ -168,7 +168,7 @@ class RowStruct:
         for v, t in zip(row,self.types):
             if not t.validate(v):
                 raise exceptions.SchemaError(
-                    f'Row value {v} is not of type "{t}".')
+                    f'Row value "{v}" is not of type "{t}".')
 
     def unpack(self, data: bytes) -> List[Any]:
         """Decodes a byte encoding of a row of data

@@ -41,7 +41,7 @@ A small, toy database written in pure python.
 
 I started writing ``ToyDB`` as a _toy_ project, in order to get a better sense of how RDBMSs work.
 
-My goal isn't to write a high-performance database or even necessarily to finish ``ToyDB`` -- it's to continue to get a better understanding of the inner workings of a database.
+My goal isn't to write a high-performance database or a fully ANSI compliant RDBMS, it's to continue to get a better understanding of the inner workings of a database.
 
 Installation
 -------------
@@ -57,11 +57,10 @@ Status
 
 **NOTE: Still in development.**
 
-- [x] Write the framework
-- [x] Layout the DB directory structure and file format
-- [ ] Write a SQL parser
-- [ ] Write a query function
-- [ ] Table Join functionality
+* Add indexes and keys
+* Implement ``ORDER BY``
+
+There currently isn't any functionality for ``JOIN``s or ``GROUP BY``s.
 
 Feedback
 ----------
